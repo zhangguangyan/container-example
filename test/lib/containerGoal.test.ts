@@ -1,7 +1,7 @@
 import {InMemoryProject} from "@atomist/automation-client";
 import * as yaml from "js-yaml";
 import * as assert from "power-assert";
-import {DynamicContainerGoalDefinition, inspectContainerGoalDefinition, retrieveProjectContainerDetails} from "../../lib/containerGoal";
+import {DynamicContainerGoalDefinition, isContainerGoalDefinition, retrieveProjectContainerDetails} from "../../lib/containerGoal";
 
 describe("inspectContainerGoalDefinition", () => {
     it ("should return true for valid conatinerGoalDefinition object", () => {
@@ -12,7 +12,7 @@ describe("inspectContainerGoalDefinition", () => {
             command: "foo",
             arguments: [],
         };
-        assert.strictEqual(inspectContainerGoalDefinition(test), true);
+        assert.strictEqual(isContainerGoalDefinition(test), true);
     });
     it ("should return false for invalid conatinerGoalDefinition object", () => {
         // Missing display name
@@ -22,7 +22,7 @@ describe("inspectContainerGoalDefinition", () => {
             command: "foo",
             arguments: [],
         } as any;
-        assert.strictEqual(inspectContainerGoalDefinition(test), false);
+        assert.strictEqual(isContainerGoalDefinition(test), false);
 
     });
 });
@@ -31,19 +31,19 @@ describe("retrieveProjectContainerDetails", () => {
         const p = InMemoryProject.of({path: "goals.yaml", content: yaml.safeDump(testData)});
         const result = await retrieveProjectContainerDetails((p as any));
         assert(result.length > 0);
-        assert(result.every(inspectContainerGoalDefinition));
+        assert(result.every(isContainerGoalDefinition));
     });
     it ("should load the contents of YAML (yml)", async () => {
         const p = InMemoryProject.of({path: "goals.yml", content: yaml.safeDump(testData)});
         const result = await retrieveProjectContainerDetails((p as any));
         assert(result.length > 0, "No results!");
-        assert(result.every(inspectContainerGoalDefinition));
+        assert(result.every(isContainerGoalDefinition));
     });
     it ("should load the contents of JSON", async () => {
         const p = InMemoryProject.of({path: "goals.json", content: JSON.stringify(testData)});
         const result = await retrieveProjectContainerDetails((p as any));
         assert(result.length > 0, "No results!");
-        assert(result.every(inspectContainerGoalDefinition));
+        assert(result.every(isContainerGoalDefinition));
 
     });
     it ("should throw on malformed input", async () => {

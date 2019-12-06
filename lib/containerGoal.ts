@@ -2,7 +2,6 @@ import {GitProject, guid, projectUtils, RetryOptions} from "@atomist/automation-
 import {ExecuteGoalResult, goal, GoalInvocation, PlannedGoal, spawnLog} from "@atomist/sdm";
 import {FulfillableGoalDetails} from "@atomist/sdm/lib/api/goal/GoalWithFulfillment";
 import * as yaml from "js-yaml";
-import {Error} from "tslint/lib/error";
 
 export interface DynamicContainerGoalDefinition {
     image: string;
@@ -70,7 +69,7 @@ export async function retrieveProjectContainerDetails(p: GitProject): Promise<Dy
         await projectUtils.doWithFiles(p, ["goals.json", "goals.y{,a}ml"], async f => {
             const rawData = yaml.safeLoad(await f.getContent()) as DynamicContainerGoalDefinition[];
             for (const r of rawData) {
-                if (inspectContainerGoalDefinition(r)) {
+                if (isContainerGoalDefinition(r)) {
                     data.push(r);
                 } else {
                     throw new Error(`Invalid Container Goal supplied.  Offender => ${JSON.stringify(r)}`);
@@ -85,7 +84,7 @@ export async function retrieveProjectContainerDetails(p: GitProject): Promise<Dy
     return data;
 }
 
-export function inspectContainerGoalDefinition(r: DynamicContainerGoalDefinition): r is DynamicContainerGoalDefinition {
+export function isContainerGoalDefinition(r: DynamicContainerGoalDefinition): r is DynamicContainerGoalDefinition {
     return r.hasOwnProperty("image") &&
     r.hasOwnProperty("version") &&
     r.hasOwnProperty("command") &&
