@@ -1,4 +1,4 @@
-import {GitProject, projectUtils, RetryOptions} from "@atomist/automation-client";
+import {GitProject, guid, projectUtils, RetryOptions} from "@atomist/automation-client";
 import {ExecuteGoalResult, goal, GoalInvocation, PlannedGoal, spawnLog} from "@atomist/sdm";
 import {FulfillableGoalDetails} from "@atomist/sdm/lib/api/goal/GoalWithFulfillment";
 import * as yaml from "js-yaml";
@@ -98,7 +98,7 @@ export async function runDockerStuff(gi: GoalInvocation): Promise<ExecuteGoalRes
     const spawnOpts = {
         log: gi.progressLog,
     };
-    const containerName = `${gi.id.repo}-${gi.parameters?.image}`;
+    const containerName = `${gi.id.repo}-${gi.parameters?.image}-${guid()}`;
     const dockerArgs = [
         "run",
         "--tty",
@@ -108,8 +108,7 @@ export async function runDockerStuff(gi: GoalInvocation): Promise<ExecuteGoalRes
         `${gi.parameters?.command}`,
         ...gi.parameters?.args,
     ];
-    const promise = spawnLog("docker", dockerArgs, spawnOpts);
-    const result = await promise;
+    const result = await spawnLog("docker", dockerArgs, spawnOpts);
     let data: ExecuteGoalResult = {};
     if (result.code) {
         gi.progressLog.write(`Docker container '${containerName}' failed` + ((result.error) ? `: ${result.error.message}` : ""));
