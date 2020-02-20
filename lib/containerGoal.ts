@@ -1,6 +1,6 @@
-import {GitProject, guid, projectUtils, RetryOptions} from "@atomist/automation-client";
-import {ExecuteGoalResult, goal, GoalInvocation, PlannedGoal, spawnLog} from "@atomist/sdm";
-import {FulfillableGoalDetails} from "@atomist/sdm/lib/api/goal/GoalWithFulfillment";
+import { GitProject, guid, projectUtils, RetryOptions } from "@atomist/automation-client";
+import { ExecuteGoalResult, goal, GoalInvocation, PlannedGoal, spawnLog, StatefulPushListenerInvocation } from "@atomist/sdm";
+import { FulfillableGoalDetails, GoalWithFulfillment, PlannedGoals } from "@atomist/sdm/lib/api/goal/GoalWithFulfillment";
 import * as yaml from "js-yaml";
 
 export interface DynamicContainerGoalDefinition {
@@ -16,7 +16,39 @@ export interface DynamicContainerGoalDefinition {
     retryCondition?: RetryOptions;
 }
 
-export const containerGoal = goal(
+const createPlannedGoals = (details: DynamicContainerGoalDefinition[]) => details.map(deets => {
+    const params = {
+        image: deets.image,
+        version: deets.version,
+        command: deets.command,
+        args: deets.arguments,
+    };
+    return {
+        details: {
+            displayName: deets.displayName,
+            approval: deets.approval,
+            preApproval: deets.preApproval,
+            descriptions: deets.descriptions,
+            retry: deets.retry,
+            retryCondition: deets.retryCondition,
+        },
+        parameters: params,
+    };
+});
+
+
+const plan = async (pli: StatefulPushListenerInvocation): Promise<PlannedGoal | PlannedGoals> => {
+    // Load in-project config
+    const details = await retrieveProjectContainerDetails(pli.project);
+    const newGoals: PlannedGoal[] = createPlannedGoals(details);
+    return {
+        containers: {
+            goals: newGoals
+        }
+    }
+};
+
+export const containerGoal: GoalWithFulfillment = goal(
     {
         uniqueName: "dyn-container-goal",
         displayName: "Dynamic Container Goal",
@@ -26,37 +58,7 @@ export const containerGoal = goal(
         return runDockerStuff(gi);
     },
     {
-        plan: async pli => {
-            // Load in-project config
-            const newGoals: PlannedGoal[] = [];
-            const details = await retrieveProjectContainerDetails(pli.project);
-            for (const deets of details) {
-                const params = {
-                    image: deets.image,
-                    version: deets.version,
-                    command: deets.command,
-                    args: deets.arguments,
-                };
-
-                newGoals.push({
-                    details: {
-                        displayName: deets.displayName,
-                        approval: deets.approval,
-                        preApproval: deets.preApproval,
-                        descriptions: deets.descriptions,
-                        retry: deets.retry,
-                        retryCondition: deets.retryCondition,
-                    },
-                    parameters: params,
-                });
-            }
-
-            return {
-                containers: {
-                    goals: newGoals,
-                },
-            };
-        },
+        plan: plan
     },
 );
 
@@ -86,10 +88,10 @@ export async function retrieveProjectContainerDetails(p: GitProject): Promise<Dy
 
 export function isContainerGoalDefinition(r: DynamicContainerGoalDefinition): r is DynamicContainerGoalDefinition {
     return r.hasOwnProperty("image") &&
-    r.hasOwnProperty("version") &&
-    r.hasOwnProperty("command") &&
-    r.hasOwnProperty("arguments") &&
-    r.hasOwnProperty("displayName");
+        r.hasOwnProperty("version") &&
+        r.hasOwnProperty("command") &&
+        r.hasOwnProperty("arguments") &&
+        r.hasOwnProperty("displayName");
 }
 
 // tslint:disable-next-line:cyclomatic-complexity
